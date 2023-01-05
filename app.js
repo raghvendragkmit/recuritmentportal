@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const routes = require('./routes');
-const ReqResLoggerMiddleware = require("./middlewares/req-res-logger");
 const { commonErrorHandler } = require("./helper/errorHandler");
 
 const app = express();
@@ -22,7 +21,6 @@ app.use(compression());
 app.disable('x-powered-by');
 
 
-app.use(ReqResLoggerMiddleware);
 
 app.use('/health', (_req, res) => {
   res.send({ message: 'Application runing successfully!' });
