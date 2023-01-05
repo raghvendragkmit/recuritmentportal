@@ -2,11 +2,17 @@ require('dotenv').config({ path: __dirname + '/../.env' });
 module.exports = {
 	development: {
 		username: process.env.DB_USERNAME,
-		password: null,
+		password: process.env.DB_PASSWORD,
 		database: process.env.DB_DBNAME,
 		host: process.env.DB_HOST,
 		port: process.env.DB_PORT,
 		dialect: 'postgres',
+		define: {
+			underscored: true,
+			createdAt: 'created_at',
+			updatedAt: 'updated_at',
+			deletedAt: 'deleted_at',
+		},
 	},
 	test: {
 		username: 'root',
