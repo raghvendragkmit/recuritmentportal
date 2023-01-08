@@ -45,6 +45,11 @@ module.exports = (sequelize, DataTypes) => {
 				allowNull: false,
 				type: Sequelize.FLOAT,
 			},
+			total_questions: {
+				allowNull: false,
+				type: Sequelize.INTEGER,
+				defaultValue: 0,
+			},
 		},
 		{
 			sequelize,

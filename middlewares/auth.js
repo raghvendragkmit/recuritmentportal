@@ -29,7 +29,7 @@ const checkAccessToken = async (req, res, next) => {
 		next();
 	} catch (error) {
 		if (error.message == 'Access denied') {
-			commonErrorHandler(req, res, error.message, 400, error);
+			return commonErrorHandler(req, res, error.message, 400, error);
 		}
 		commonErrorHandler(req, res, error.message, 404, error);
 	}

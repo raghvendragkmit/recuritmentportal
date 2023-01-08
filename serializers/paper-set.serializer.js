@@ -1,84 +1,80 @@
 const createPaperSet = async (req, res, next) => {
-  const data = res.data || null;
+	const data = res.data || null;
 
-  const response = {
-    id: data.id,
-    subjectId: data.subject_id,
-    paperSetName: data.paper_set_name,
-    marksPerQuestion: data.marks_per_question,
-    negativeMarksPerWrongAnswer: data.negative_marks_per_question
-  };
+	const response = {
+		id: data.id,
+		subjectId: data.subject_id,
+		paperSetName: data.paper_set_name,
+		marksPerQuestion: data.marks_per_question,
+		negativeMarksPerWrongAnswer: data.negative_marks_per_question,
+	};
 
-  res.data = response;
-  next();
+	res.data = response;
+	next();
 };
 
 const getALlPaperSet = async (req, res, next) => {
-  const data = res.data || null;
+	const data = res.data || null;
 
-  const response = [];
+	const response = [];
 
-  data.forEach((obj) => {
-    const tempObj = {
-      id: obj.id,
-      subjectId: obj.subjects.id,
-      subjectName: obj.subjects.subject_name,
-      paperSetName: obj.paper_set_name,
-      marksPerQuestion: obj.marks_per_question,
-      negativeMarksPerWrongAnswer: obj.negative_marks_per_question
-    };
-    response.push(tempObj);
-  });
+	data.forEach((obj) => {
+		const tempObj = {
+			id: obj.id,
+			subjectId: obj.subjects.id,
+			subjectName: obj.subjects.subject_name,
+			paperSetName: obj.paper_set_name,
+			marksPerQuestion: obj.marks_per_question,
+			negativeMarksPerWrongAnswer: obj.negative_marks_per_question,
+		};
+		response.push(tempObj);
+	});
 
-  res.data = response;
-  next();
+	res.data = response;
+	next();
 };
 
 const questionAnswers = async (req, res, next) => {
-  const data = res.data || null;
+	const data = res.data || null;
+	const response = [];
 
-  const response = [];
-  data.forEach((question) => {
-    const tempQuestion = {
-      id: question.id,
-      questionDescription: question.question_description,
-      paperSetId: question.paper_set_id
-    };
+	console.log(data[0]), '------>';
 
-    const answers = [];
+	data.forEach((obj) => {
+		const tempObj = {
+			id: obj.questionAnswer.id,
+			question: obj.questionAnswer.question,
+			option1: obj.questionAnswer.option1,
+			option2: obj.questionAnswer.option2,
+			option3: obj.questionAnswer.option3,
+			option4: obj.questionAnswer.option4,
+		};
+		response.push(tempObj);
+	});
 
-    question.answers.forEach((answer) => {
-      const tempAnswer = {
-        id: answer.id,
-        answerDescription: answer.answer_description,
-        isCorrect: answer.is_correct
-      };
-      answers.push(tempAnswer);
-    });
-
-    tempQuestion.answers = answers;
-    response.push(tempQuestion);
-  });
-
-  res.data = response;
-  next();
+	res.data = response;
+	next();
 };
 
 const paperSetNameId = async (req, res, next) => {
-  const data = res.data || null;
+	const data = res.data || null;
 
-  const response = {
-    id: data.id,
-    subjectName: data.paper_set_name
-  };
+	const response = {
+		id: data.id,
+		subjectId: data.subjects.id,
+		paperSetName: data.paper_set_name,
+		marksPerQuestion: data.marks_per_question,
+		negativeMarksPerWrongAnswer: data.negative_marks_per_question,
+		totalQuestions: data.total_questions,
+	};
 
-  res.data = response;
-  next();
+	res.data = response;
+	next();
 };
 
 module.exports = {
-  createPaperSet,
-  getALlPaperSet,
-  questionAnswers,
-  paperSetNameId
+	createPaperSet,
+	getALlPaperSet,
+	questionAnswers,
+	paperSetNameId,
 };

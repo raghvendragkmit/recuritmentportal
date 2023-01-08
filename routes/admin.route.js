@@ -38,7 +38,6 @@ router.post(
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
 	questionAnswerValidator.questionAnswersSchema,
-	questionAnswerValidator.limitPageSchema,
 	questionAnswerController.createQuestionAnswers,
 	genericResponse.sendResponse
 );
@@ -49,6 +48,35 @@ router.get(
 	authMiddleware.verifyAdmin,
 	questionAnswerController.getAllQuestionAnswer,
 	questionAnswerSerializer.questionAnswers,
+	genericResponse.sendResponse
+);
+
+router.get(
+	'/question-answer/:questionId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	questionAnswerValidator.questionIdSchema,
+	questionAnswerController.getQuestionAnswerById,
+	questionAnswerSerializer.questionAnswer,
+	genericResponse.sendResponse
+);
+
+router.delete(
+	'/question-answer/:questionId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	questionAnswerValidator.questionIdSchema,
+	questionAnswerController.deleteQuestionAnswer,
+	genericResponse.sendResponse
+);
+
+router.patch(
+	'/question-answer/:questionId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	questionAnswerValidator.questionIdSchema,
+	questionAnswerValidator.questionAnswerUpdateSchema,
+	questionAnswerController.updateQuestionAnswer,
 	genericResponse.sendResponse
 );
 
@@ -70,6 +98,16 @@ router.delete(
 	genericResponse.sendResponse
 );
 
+router.patch(
+	'/exam/:examId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	examValidator.examIdSchema,
+	examValidator.createExamSchema,
+	examController.updateExam,
+	genericResponse.sendResponse
+);
+
 router.get(
 	'/exams',
 	authMiddleware.checkAccessToken,
@@ -77,41 +115,39 @@ router.get(
 	examController.getAllExam,
 	genericResponse.sendResponse
 );
+
+router.post(
+	'/exam/:examId/group/:groupId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	examController.addGroupToExam,
+	genericResponse.sendResponse
+);
+
+router.delete(
+	'/exam/:examId/group/:groupId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	examController.deleteGroupFromExam,
+	genericResponse.sendResponse
+);
+
 router.get(
-	'/question-answer/:questionId',
+	'/exam-results/:examId',
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
-	questionAnswerValidator.questionIdSchema,
-	questionAnswerController.getQuestionAnswerById,
-	questionAnswerSerializer.questionAnswer,
+	examValidator.examIdSchema,
+	examController.examResult,
+	examSerializer.examResult,
 	genericResponse.sendResponse
 );
 
-router.delete(
-	'/question-answer/:questionId',
+router.post(
+	'/publish-exam-results/:examId',
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
-	questionAnswerValidator.questionIdSchema,
-	questionAnswerController.deleteQuestionById,
-	genericResponse.sendResponse
-);
-
-router.delete(
-	'/answer/:answerId',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyAdmin,
-	questionAnswerValidator.answerIdSchema,
-	questionAnswerController.deleteAnswerById,
-	genericResponse.sendResponse
-);
-
-router.patch(
-	'/answer/:answerId',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyAdmin,
-	questionAnswerValidator.answerIdSchema,
-	questionAnswerValidator.answerDescriptionSchema,
-	questionAnswerController.updateAnswerDescription,
+	examValidator.examIdSchema,
+	examController.publishResult,
 	genericResponse.sendResponse
 );
 
@@ -153,7 +189,7 @@ router.delete(
 );
 
 router.get(
-	'/paper-set-question-answers/:paperSetId',
+	'/paper-set/:paperSetId/question-answers',
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
 	paperSetController.getAllPaperSetQuestions,
@@ -161,13 +197,19 @@ router.get(
 	genericResponse.sendResponse
 );
 
-router.patch(
-	'/question/:questionId',
+router.post(
+	'/paper-set/:paperSetId/question-answer/:questionId',
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
-	questionAnswerValidator.questionIdSchema,
-	questionAnswerValidator.questionDescriptionSchema,
-	questionAnswerController.updateQuestionDescription,
+	paperSetController.addQuestionToPaperSet,
+	genericResponse.sendResponse
+);
+
+router.delete(
+	'/paper-set/:paperSetId/question-answer/:questionId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	paperSetController.deleteQuestionFromPaperSet,
 	genericResponse.sendResponse
 );
 
@@ -245,25 +287,6 @@ router.patch(
 	subjectValidator.subjectNameSchema,
 	subjectController.updateSubject,
 	subjectSerializer.subjectNameId,
-	genericResponse.sendResponse
-);
-
-router.get(
-	'/exam-results/:examId',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyAdmin,
-	examValidator.examIdSchema,
-	examController.examResult,
-	examSerializer.examResult,
-	genericResponse.sendResponse
-);
-
-router.post(
-	'/publish-exam-results/:examId',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyAdmin,
-	examValidator.examIdSchema,
-	examController.publishResult,
 	genericResponse.sendResponse
 );
 

@@ -75,6 +75,10 @@ module.exports = {
 					allowNull: true,
 					type: Sequelize.BOOLEAN,
 				},
+				publish_result: {
+					allowNull: true,
+					type: Sequelize.BOOLEAN,
+				},
 
 				created_at: {
 					allowNull: false,

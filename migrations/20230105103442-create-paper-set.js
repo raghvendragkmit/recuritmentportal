@@ -46,6 +46,11 @@ module.exports = {
 				type: Sequelize.DATE,
 				defaultValue: null,
 			},
+			total_questions: {
+				allowNull: false,
+				type: Sequelize.INTEGER,
+				defaultValue: 0,
+			},
 		});
 	},
 	// eslint-disable-next-line no-unused-vars

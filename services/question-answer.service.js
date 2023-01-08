@@ -1,289 +1,174 @@
 /* eslint-disable no-unused-vars */
 const models = require('../models');
 const { sequelize } = require('../models');
+const _ = require('lodash');
 
 const createQuestionAnswer = async (payload) => {
-  const trans = await sequelize.transaction();
-  try {
-    const paperSetExist = await models.PaperSet.findOne(
-      {
-        where: { paper_set_name: payload.paperSetName }
-      },
-      { transaction: trans }
-    );
+	const questionExist = await models.QuestionAnswer.findOne({
+		where: { question: payload.question },
+	});
 
-    if (!paperSetExist) {
-      throw new Error('paperSet not found');
-    }
+	if (questionExist) {
+		throw new Error('Question already exist');
+	}
 
-    const questionExist = await models.Question.findOne({
-      where: { question_description: payload.questionDescription }
-    });
+	const option1 = payload.option1;
+	const option2 = payload.option2;
+	const option3 = payload.option3;
+	const option4 = payload.option4;
+	const correctOption = payload.correctOption;
 
-    if (questionExist) {
-      throw new Error('Question already exist');
-    }
+	const questionCreated = await models.QuestionAnswer.create({
+		question: payload.question,
+		option1: option1,
+		option2: option2,
+		option3: option3,
+		option4: option4,
+		correct_option: correctOption,
+	});
 
-    const questionCreated = await models.Question.create(
-      {
-        question_description: payload.questionDescription,
-        paper_set_id: paperSetExist.dataValues.id
-      },
-      { transaction: trans }
-    );
+	if (!questionCreated) {
+		throw new Error('question not created');
+	}
 
-    if (!questionCreated) {
-      throw new Error('question not created');
-    }
-
-    const answerOptions = payload.options;
-    let countTrue = 0;
-    const answerArray = [];
-    for (let i = 0; i < answerOptions.length; ++i) {
-      const answerDescription = answerOptions[i].answerDescription;
-      const isCorrect = answerOptions[i].isCorrect;
-      if (isCorrect) {
-        countTrue++;
-      }
-      if (countTrue > 1) {
-        throw new Error('one out of 4 options must be true');
-      }
-      answerArray.push({
-        answer_description: answerDescription,
-        is_correct: isCorrect,
-        question_id: questionCreated.id
-      });
-    }
-
-    const answerCreated = await models.Answer.bulkCreate(answerArray, {
-      transaction: trans
-    });
-
-    await trans.commit();
-    return { data: 'Question answer created successfully ', error: null };
-  } catch (error) {
-    await trans.rollback();
-    return { data: null, error: error.message };
-  }
+	return 'Question answer created successfully';
 };
 
 const createQuestionAnswers = async (payload) => {
-  const questionObject = payload.questionAnswers;
-  const trans = await sequelize.transaction();
-  try {
-    for (let key in questionObject) {
-      // eslint-disable-next-line no-prototype-builtins
-      // if (questionObject.hasOwnProperty(key)) {
-      const item = questionObject[key];
-      const paperSetExist = await models.PaperSet.findOne(
-        {
-          where: { paper_set_name: item.paperSetName }
-        },
-        { transaction: trans }
-      );
+	const questionObject = payload.questionAnswers;
+	const trans = await sequelize.transaction();
+	try {
+		for (let key in questionObject) {
+			// eslint-disable-next-line no-prototype-builtins
+			const item = questionObject[key];
+			const questionExist = await models.QuestionAnswer.findOne(
+				{
+					where: { question: item.question },
+				},
+				{ transaction: trans }
+			);
 
-      if (!paperSetExist) {
-        throw new Error('paperSet not found');
-      }
+			if (questionExist) {
+				throw new Error('Question already exist');
+			}
 
-      const questionExist = await models.Question.findOne({
-        where: { question_description: item.questionDescription }
-      });
+			const option1 = item.option1;
+			const option2 = item.option2;
+			const option3 = item.option3;
+			const option4 = item.option4;
+			const correctOption = item.correctOption;
 
-      if (questionExist) {
-        throw new Error('Question already exist');
-      }
+			const questionCreated = await models.QuestionAnswer.create(
+				{
+					question: item.question,
+					option1: option1,
+					option2: option2,
+					option3: option3,
+					option4: option4,
+					correct_option: correctOption,
+				},
+				{ transaction: trans }
+			);
 
-      const questionCreated = await models.Question.create(
-        {
-          question_description: item.questionDescription,
-          paper_set_id: paperSetExist.dataValues.id
-        },
-        { transaction: trans }
-      );
+			if (!questionCreated) {
+				throw new Error('question not created');
+			}
+		}
 
-      if (!questionCreated) {
-        throw new Error('question not created');
-      }
-
-      const answerOptions = item.options;
-      let countTrue = 0;
-      const answerArray = [];
-      for (let i = 0; i < answerOptions.length; ++i) {
-        const answerDescription = answerOptions[i].answerDescription;
-        const isCorrect = answerOptions[i].isCorrect;
-        if (isCorrect) {
-          countTrue++;
-        }
-        if (countTrue > 1) {
-          throw new Error('one out of 4 options must be true');
-        }
-        answerArray.push({
-          answer_description: answerDescription,
-          is_correct: isCorrect,
-          question_id: questionCreated.id
-        });
-      }
-      const answerCreated = await models.Answer.bulkCreate(answerArray, {
-        transaction: trans
-      });
-    }
-
-    await trans.commit();
-    return { data: 'Question Answer Created Successfully', error: null };
-  } catch (error) {
-    return { data: null, error: error.message };
-  }
+		await trans.commit();
+		return { data: 'Question Answer Created Successfully', error: null };
+	} catch (error) {
+		await trans.rollback();
+		return { data: null, error: error.message };
+	}
 };
 
 const getAllQuestionAnswer = async (query) => {
-  const trans = await sequelize.transaction();
-  try {
-    let limit = query.page == 0 ? null : query.limit;
-    let page = query.page < 2 ? 0 : query.page;
-    const questions = await models.Question.findAll(
-      {
-        include: [
-          {
-            model: models.Answer,
-            as: 'answers'
-          }
-        ],
-        limit: limit,
-        offset: page * limit
-      },
-      { transaction: trans }
-    );
-
-    await trans.commit();
-    return { data: questions, error: null };
-  } catch (error) {
-    await trans.rollback();
-    return { data: null, error: error.message };
-  }
+	const questionAnswers = await models.QuestionAnswer.findAll();
+	console.log(questionAnswers);
+	return questionAnswers;
 };
 
 const getQuestionAnswerById = async (payload, params) => {
-  const questionId = params.questionId;
-  const questionAnswer = await models.Question.findOne({
-    where: { id: questionId },
-    include: [
-      {
-        model: models.Answer,
-        as: 'answers',
-        where: { question_id: questionId }
-      }
-    ]
-  });
+	const questionId = params.questionId;
+	const questionAnswer = await models.QuestionAnswer.findOne({
+		where: { id: questionId },
+	});
 
-  if (!questionAnswer) {
-    throw new Error('question not found');
-  }
-  return questionAnswer;
+	if (!questionAnswer) {
+		throw new Error('question not found');
+	}
+	return questionAnswer;
 };
 
-const updateQuestionDescription = async (payload, params) => {
-  const questionId = params.questionId;
-  const questionExist = await models.Question.findOne({
-    where: { id: questionId }
-  });
-  if (!questionExist) {
-    throw new Error('question not found');
-  }
-  const questionUpdated = await models.Question.update(
-    {
-      question_description: payload.questionDescription
-    },
-    { where: { id: questionId } }
-  );
+const updateQuestionAnswer = async (payload, params) => {
+	const questionId = params.questionId;
+	const questionExist = await models.QuestionAnswer.findOne({
+		where: { id: questionId },
+	});
 
-  return 'question description update success';
+	if (!questionExist) {
+		throw new Error('question not found');
+	}
+
+	const questionPayload = {};
+
+	for (let key in payload) {
+		payload[key] && (questionPayload[key] = payload[key]);
+	}
+
+  if (questionPayload.correctOption) {
+    questionPayload.correct_option = questionPayload.correctOption;
+		delete questionPayload.correctOption;
+	}
+
+	await models.QuestionAnswer.update(questionPayload, {
+		where: {
+			id: questionId,
+		},
+	});
+	return 'question answer updated successfully';
 };
 
-const updateAnswerDescription = async (payload, params) => {
-  const answerId = params.answerId;
-  const answerExist = await models.Answer.findOne({
-    where: { id: answerId }
-  });
-  if (!answerExist) {
-    throw new Error('answer not found');
-  }
-  const answerUpdated = await models.Answer.update(
-    {
-      answer_description: payload.answerDescription
-    },
-    { where: { id: answerId } }
-  );
+const deleteQuestionAnswer = async (payload, params) => {
+	const questionId = params.questionId;
+	const questionExist = await models.QuestionAnswer.findOne({
+		where: { id: questionId },
+	});
+	if (!questionExist) {
+		throw new Error('question not found');
+	}
 
-  return 'answer description update success';
-};
+	const questionInPaperSet = await models.PaperSetQuestionAnswerMapping.count(
+		{
+			where: { question_answer_id: questionId },
+		}
+	);
 
-const deleteAnswerById = async (payload, params) => {
-  const trans = await sequelize.transaction();
-  try {
-    const answerId = params.answerId;
-    const answerExist = await models.Answer.findOne(
-      { where: { id: answerId } },
-      { transaction: trans }
-    );
-    if (!answerExist) {
-      throw new Error('answer not found');
-    }
-    await models.Answer.destroy(
-      { where: { id: answerId } },
-      { transaction: trans }
-    );
-    await trans.commit();
-    return { data: 'asnwer deleted successfully', error: null };
-  } catch (error) {
-    await trans.rollback();
-    return { data: null, error: error.message };
-  }
-};
+	if (questionInPaperSet > 0) {
+		throw new Error('question is in paper set');
+	}
 
-const deleteQuestionById = async (payload, params) => {
-  const trans = await sequelize.transaction();
-  try {
-    const questionId = params.questionId;
-    const questionExist = await models.Question.findOne(
-      { where: { id: questionId } },
-      { transaction: trans }
-    );
-    if (!questionExist) {
-      throw new Error('question not found');
-    }
-    await models.Question.destroy(
-      { where: { id: questionId } },
-      { transaction: trans }
-    );
-    await models.Answer.destroy(
-      { where: { question_id: questionId } },
-      { transaction: trans }
-    );
-    await trans.commit();
-    return { data: 'question asnwer deleted successfully', error: null };
-  } catch (error) {
-    await trans.rollback();
-    return { data: null, error: error.message };
-  }
+	await models.QuestionAnswer.destroy({
+		where: { id: questionId },
+	});
+	return 'question answer deleted successfully';
 };
 
 const questionAnswerByFile = async (payload, file) => {
-  const response = await createQuestionAnswers(payload);
-  if (response.error) {
-    throw new Error(response.error);
-  }
-  return 'Question Answers uploaded successfully';
+	const response = await createQuestionAnswers(payload);
+	if (response.error) {
+		throw new Error(response.error);
+	}
+	return 'Question Answers uploaded successfully';
 };
 
 module.exports = {
-  createQuestionAnswer,
-  getAllQuestionAnswer,
-  getQuestionAnswerById,
-  createQuestionAnswers,
-  updateQuestionDescription,
-  updateAnswerDescription,
-  deleteQuestionById,
-  deleteAnswerById,
-  questionAnswerByFile
+	createQuestionAnswer,
+	getAllQuestionAnswer,
+	getQuestionAnswerById,
+	createQuestionAnswers,
+	updateQuestionAnswer,
+	deleteQuestionAnswer,
+	questionAnswerByFile,
 };

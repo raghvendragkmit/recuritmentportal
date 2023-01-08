@@ -44,6 +44,8 @@ module.exports = (sequelize, DataTypes) => {
 		{
 			sequelize,
 			modelName: 'PaperSetQuestionAnswerMapping',
+			tableName: 'paper_set_question_answer_mapping',
+			paranoid: true,
 		}
 	);
 	return PaperSetQuestionAnswerMapping;

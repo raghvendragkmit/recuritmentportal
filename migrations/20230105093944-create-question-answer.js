@@ -29,7 +29,7 @@ module.exports = {
 				type: Sequelize.STRING,
 				allowNull: false,
 			},
-			correct_option1: {
+			correct_option: {
 				type: Sequelize.STRING,
 				allowNull: false,
 			},

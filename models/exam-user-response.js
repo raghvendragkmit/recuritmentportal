@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
 				},
 			},
 
-			question_id: {
+			question_answer_id: {
 				allowNull: false,
 				type: Sequelize.UUID,
 				references: {
