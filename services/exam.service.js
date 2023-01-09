@@ -24,59 +24,22 @@ const createExam = async (payload) => {
 		throw new Error('no paperset with question');
 	}
 
-	if (payload.examStartTime >= payload.examEndTime) {
+	const currentTime = Date.parse(new Date());
+	const startTime = Date.parse(payload.examStartTime);
+	const endTime = Date.parse(payload.examEndTime);
+
+	if (startTime <= currentTime) {
+		throw new Error('exam start time must be greater than current time');
+	}
+
+	if (startTime >= endTime) {
 		throw new Error('examEndTime must be greater than examStartTime');
 	}
 
-	const startTime = new String(payload.examStartTime).split(':');
-	const endTime = new String(payload.examEndTime).split(':');
-	const dateArray = new String(payload.examDate).split('-');
-
-	const currentDate = moment().format('YYYY-MM-DD');
-
-	const currentTime = moment().format('HH:mm:ss');
-	if (payload.examDate < currentDate) {
-		throw new Error('please pick an upcoming date');
-	} else if (
-		payload.examDate == currentDate &&
-		payload.examStartTime <= currentTime
-	) {
-		throw new Error('please pick valid time');
-	}
-
-	const start_time =
-		dateArray[0] +
-		'-' +
-		dateArray[1] +
-		'-' +
-		dateArray[2] +
-		' ' +
-		startTime[0] +
-		':' +
-		startTime[1] +
-		':' +
-		startTime[2];
-	const end_time =
-		dateArray[0] +
-		'-' +
-		dateArray[1] +
-		'-' +
-		dateArray[2] +
-		' ' +
-		endTime[0] +
-		':' +
-		endTime[1] +
-		':' +
-		endTime[2];
-
-	const start_date_time = Date.parse(start_time);
-	const end_date_time = Date.parse(end_time);
-
 	const examPayload = {
 		subject_id: subjectExist.id,
-		exam_start_time: start_date_time,
-		exam_end_time: end_date_time,
-		exam_date: payload.examDate,
+		exam_start_time: startTime,
+		exam_end_time: endTime,
 		exam_passing_percentage: payload.examPassingPercentage,
 	};
 
@@ -303,235 +266,68 @@ const startExam = async (payload, user, params) => {
 	return questionSets;
 };
 
-// eslint-disable-next-line no-unused-vars
-const submitExam = async (payload, user) => {
+const submitExam = async (user, params) => {
 	const trans = await sequelize.transaction();
 	try {
-		const examId = payload.examId;
+		const examId = params.examId;
 		const userId = user.id;
-
-		const currentTime = new Date();
-
-		const examExist = await models.Exam.findOne(
-			{
-				where: {
-					id: examId,
-				},
-			},
-			{ transaction: trans }
-		);
-
-		if (!examExist) {
-			throw new Error('exam not found');
-		}
-
-		const userExist = await models.User.findOne(
-			{
-				where: {
-					id: userId,
-				},
-			},
-			{ transaction: trans }
-		);
-
-		if (!userExist) {
-			throw new Error('user not found');
-		}
-
-		const examUserPaperMappingExist =
-			await models.ExamUserPaperSetMapping.findOne(
-				{
-					where: {
-						[Op.and]: [{ exam_id: examId }, { user_id: userId }],
-					},
-				},
-				{ transaction: trans }
-			);
-
-		if (!examUserPaperMappingExist) {
-			throw new Error('Invalid paperSetId');
-		}
 
 		const examUserMappingExist =
 			await models.ExamUserPaperSetMapping.findOne(
 				{
 					where: {
-						[Op.and]: [
-							{ exam_id: examId },
-							{ user_id: userId },
-							{
-								submit_time: {
-									[Op.eq]: null,
-								},
-							},
-						],
+						[Op.and]: [{ exam_id: examId }, { user_id: userId }],
 					},
 					attributes: { include: ['id'] },
+					include: [
+						{
+							model: models.PaperSet,
+							as: 'paper_sets',
+						},
+						{
+							model: models.Exam,
+							as: 'exams',
+						},
+					],
 				},
 				{ transaction: trans }
 			);
 
 		if (!examUserMappingExist) {
+			throw new Error('exam, user not found');
+		}
+
+		if (examUserMappingExist.submit_time != null) {
 			throw new Error('exam submitted');
 		}
+
 		const attempt_id = examUserMappingExist.dataValues.id;
 
-		const paperSetExist = await models.PaperSet.findOne({
-			where: {
-				id: examUserMappingExist.paper_set_id,
+		const correctAnswers = await models.ExamUserResponse.count(
+			{
+				where: {
+					[Op.and]: [
+						{ exam_user_attempt_id: attempt_id },
+						{ is_correct: true },
+					],
+				},
 			},
-		});
+			{ transaction: trans }
+		);
 
-		if (examExist.exam_end_time < currentTime) {
-			const correctAnswers = await models.ExamUserResponse.count(
-				{
-					where: {
-						[Op.and]: [
-							{ exam_user_attempt_id: attempt_id },
-							{ is_correct: true },
-						],
-					},
+		const questionsAttempted = await models.ExamUserResponse.count(
+			{
+				where: {
+					exam_user_attempt_id: attempt_id,
 				},
-				{ transaction: trans }
-			);
-
-			const questionsAttempted = await models.ExamUserResponse.count(
-				{
-					where: {
-						exam_user_attempt_id: attempt_id,
-					},
-				},
-				{ transaction: trans }
-			);
-
-			const marksPerQuestion = paperSetExist.marks_per_question;
-			const negativeMarksPerWrongAnswer =
-				paperSetExist.negative_marks_per_question;
-
-			let totalMarksObtained =
-				marksPerQuestion * correctAnswers -
-				(questionsAttempted - correctAnswers) *
-					negativeMarksPerWrongAnswer;
-
-			if (totalMarksObtained < 0) {
-				totalMarksObtained = 0;
-			}
-			const passingPercentage = examExist.exam_passing_percentage;
-			const totalQuestions = examUserMappingExist.total_questions;
-			const percentageObtained =
-				(totalMarksObtained / totalQuestions) * marksPerQuestion * 100;
-			const studenResult =
-				percentageObtained >= passingPercentage ? true : false;
-
-			const updatedResult = await models.ExamUserPaperSetMapping.update(
-				{
-					total_question_attempted: questionsAttempted,
-					total_correct_answers: correctAnswers,
-					total_marks_obtained: totalMarksObtained,
-					submit_time: new Date(),
-					result: studenResult,
-				},
-				{
-					where: {
-						id: attempt_id,
-					},
-				},
-				{ transaction: trans }
-			);
-			await trans.commit();
-			return 'Response logged';
-		}
-
-		const userResponse = payload.response;
-
-		let questionsAttempted = userResponse.length;
-		let correctAnswers = 0;
-
-		for (let i = 0; i < userResponse.length; ++i) {
-			const questionId = userResponse[i].questionId;
-			const correctOption = userResponse[i].answer;
-
-			const questionExist =
-				await models.PaperSetQuestionAnswerMapping.findOne(
-					{
-						where: {
-							[Op.and]: [
-								{ question_answer_id: questionId },
-								{ paper_set_id: paperSetExist.id },
-							],
-						},
-						include: [
-							{
-								model: models.QuestionAnswer,
-								as: 'questionAnswer',
-							},
-						],
-					},
-					{ transaction: trans }
-				);
-
-			if (questionExist == null) {
-				questionsAttempted--;
-				continue;
-			}
-
-			const correctAnswer = questionExist.questionAnswer.correct_option;
-			console.log(questionExist);
-			console.log(
-				correctAnswer == correctOption,
-				correctAnswer,
-				correctOption
-			);
-			if (correctAnswer == correctOption) {
-				correctAnswers++;
-			}
-
-			const alreadySubmitted = await models.ExamUserResponse.findOne(
-				{
-					where: {
-						[Op.and]: [
-							{ exam_user_attempt_id: attempt_id },
-							{ question_answer_id: questionId },
-						],
-					},
-				},
-				{ transaction: trans }
-			);
-
-			if (alreadySubmitted) {
-				await models.ExamUserResponse.update(
-					{
-						answer: correctOption,
-						is_correct:
-							correctAnswer == correctOption ? true : false,
-					},
-					{
-						where: {
-							[Op.and]: [
-								{ exam_user_attempt_id: attempt_id },
-								{ question_answer_id: questionId },
-							],
-						},
-					},
-					{ transaction: trans }
-				);
-			} else {
-				await models.ExamUserResponse.create(
-					{
-						answer: correctOption,
-						is_correct:
-							correctAnswer == correctOption ? true : false,
-						exam_user_attempt_id: attempt_id,
-						question_answer_id: questionId,
-					},
-					{ transaction: trans }
-				);
-			}
-		}
+			},
+			{ transaction: trans }
+		);
 
 		const marksPerQuestion = paperSetExist.marks_per_question;
 		const negativeMarksPerWrongAnswer =
 			paperSetExist.negative_marks_per_question;
+
 		let totalMarksObtained =
 			marksPerQuestion * correctAnswers -
 			(questionsAttempted - correctAnswers) * negativeMarksPerWrongAnswer;
@@ -539,22 +335,12 @@ const submitExam = async (payload, user) => {
 		if (totalMarksObtained < 0) {
 			totalMarksObtained = 0;
 		}
-
 		const passingPercentage = examExist.exam_passing_percentage;
 		const totalQuestions = examUserMappingExist.total_questions;
 		const percentageObtained =
 			(totalMarksObtained / totalQuestions) * marksPerQuestion * 100;
-		const studentResult =
+		const studenResult =
 			percentageObtained >= passingPercentage ? true : false;
-
-		console.log(
-			marksPerQuestion,
-			negativeMarksPerWrongAnswer,
-			questionsAttempted,
-			correctAnswers,
-			totalMarksObtained,
-			studentResult
-		);
 
 		const updatedResult = await models.ExamUserPaperSetMapping.update(
 			{
@@ -562,7 +348,7 @@ const submitExam = async (payload, user) => {
 				total_correct_answers: correctAnswers,
 				total_marks_obtained: totalMarksObtained,
 				submit_time: new Date(),
-				result: studentResult,
+				result: studenResult,
 			},
 			{
 				where: {
@@ -571,13 +357,11 @@ const submitExam = async (payload, user) => {
 			},
 			{ transaction: trans }
 		);
-
 		await trans.commit();
-
-		return { data: 'Exam submitted successfully', error: null };
+		return 'Exam Submitted successfully';
 	} catch (error) {
 		await trans.rollback();
-		return { data: null, error: error.message };
+		throw new Error(error.message);
 	}
 };
 
@@ -589,77 +373,70 @@ const logResponse = async (payload, user) => {
 		const questionId = payload.questionId;
 		const answer = payload.answer;
 
-		const currentTime = new Date();
-
-		const examExist = await models.Exam.findOne(
-			{
-				where: {
-					id: examId,
-				},
-			},
-			{ transaction: trans }
-		);
-
-		if (!examExist) {
-			throw new Error('exam not found');
-		}
-
-		if (currentTime > examExist.exam_end_time) {
-			throw new Error('Cannot submit after end time');
-		}
-
-		const userExist = await models.User.findOne(
-			{
-				where: {
-					id: userId,
-				},
-			},
-			{ transaction: trans }
-		);
-
-		if (!userExist) {
-			throw new Error('user not found');
-		}
-
 		const examUserMappingExist =
 			await models.ExamUserPaperSetMapping.findOne(
 				{
 					where: {
-						[Op.and]: [
-							{ exam_id: examId },
-							{ user_id: userId },
-							{
-								submit_time: {
-									[Op.eq]: null,
-								},
-							},
-						],
+						[Op.and]: [{ exam_id: examId }, { user_id: userId }],
 					},
 					attributes: { include: ['id'] },
+					include: [
+						{
+							model: models.Exam,
+							as: 'exams',
+						},
+						{
+							model: models.PaperSet,
+							as: 'paper_sets',
+						},
+					],
 				},
 				{ transaction: trans }
 			);
 
 		if (!examUserMappingExist) {
-			throw new Error('either exam not started or already submitted');
+			throw new Error('exam not started');
 		}
+
+		if (examUserMappingExist.Exam.submit_time != null) {
+			throw new Error('exam submitted');
+		}
+
+		if (
+			Date.parse(examUserMappingExist.Exam.submit_time) <
+			Date.parse(new Date())
+		) {
+			throw new Error('Cannot submit after submit time');
+		}
+
+		const paperSetId = examUserMappingExist.PaperSet.id;
 
 		const attempt_id = examUserMappingExist.dataValues.id;
 
-		const questionExist = await models.QuestionAnswer.findOne(
-			{
-				where: {
-					[Op.and]: [{ id: questionId }],
+		const questionExist =
+			await models.PaperSetQuestionAnswerMapping.findOne(
+				{
+					where: {
+						[Op.and]: [
+							{ question_answer_id: questionId },
+							{ paper_set_id: paperSetId },
+						],
+					},
+					include: [
+						{
+							model: models.QuestionAnswer,
+							as: 'questionAnswer',
+						},
+					],
 				},
-			},
-			{ transaction: trans }
-		);
+				{ transaction: trans }
+			);
 
-		if (questionExist == null) {
+		if (questionExist.QuestionAnswer == null) {
 			throw new Error('Invalid input');
 		}
 
-		const correctAnswer = questionExist.correct_option;
+		const correctAnswer = questionExist.QuestionAnswer.correct_option;
 
 		const alreadySubmitted = await models.ExamUserResponse.findOne(
 			{
@@ -702,10 +479,10 @@ const logResponse = async (payload, user) => {
 		}
 
 		await trans.commit();
-		return { data: 'response logged successfully', error: null };
+		return 'response logged successfully';
 	} catch (error) {
 		await trans.rollback();
-		return { data: null, error: error.message };
+		throw new Error(error.message);
 	}
 };
 

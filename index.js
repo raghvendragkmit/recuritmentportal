@@ -4,13 +4,12 @@ const app = require('./app');
 const { sequelize } = require('./models');
 const redis = require('./helpers/redis.helper');
 
-const startServer = async function () {
+const startServer = async () => {
 	try {
 		await sequelize.authenticate();
 		console.log('... Microservice db ✔');
-		await redis.connect();
+		redis.connect();
 		console.log('... Redis db ✔');
-		// eslint-disable-next-line no-undef
 		app.listen(process.env.SERVER_PORT);
 		console.log(`--- Server started on ${process.env.SERVER_PORT} ---\n\n`);
 	} catch (err) {

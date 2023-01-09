@@ -62,15 +62,9 @@ const updatePaperSet = async (req, res, next) => {
 
 const addQuestionToPaperSet = async (req, res, next) => {
 	try {
-		const { body: payload, params } = req;
-		const response = await paperSetServices.addQuestionToPaperSet(
-			payload,
-			params
-		);
-		if (response.error) {
-			throw new Error(response.error);
-		}
-		res.data = response.data;
+		const { params } = req;
+		const response = await paperSetServices.addQuestionToPaperSet(params);
+		res.data = response;
 		next();
 	} catch (error) {
 		commonErrorHandler(req, res, error.message, 400, error);

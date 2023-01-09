@@ -63,12 +63,9 @@ const startExam = async (req, res, next) => {
 
 const submitExam = async (req, res, next) => {
 	try {
-		const { body: payload, user, params } = req;
-		const response = await examServices.submitExam(payload, user, params);
-		if (response.error) {
-			throw new Error(response.error);
-		}
-		res.data = response.data;
+		const { user, params } = req;
+		const response = await examServices.submitExam(user, params);
+		res.data = response;
 		next();
 	} catch (error) {
 		commonErrorHandler(req, res, error.message, 400, error);
@@ -79,10 +76,7 @@ const logResponse = async (req, res, next) => {
 	try {
 		const { body: payload, user } = req;
 		const response = await examServices.logResponse(payload, user);
-		if (response.error) {
-			throw new Error(response.error);
-		}
-		res.data = response.data;
+		res.data = response;
 		next();
 	} catch (error) {
 		commonErrorHandler(req, res, error.message, 400, error);

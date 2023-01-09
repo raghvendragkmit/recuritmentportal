@@ -36,10 +36,8 @@ const createQuestionAnswers = async (req, res, next) => {
 		const response = await questionAnswerServices.createQuestionAnswers(
 			payload
 		);
-		if (response.error) {
-			throw new Error(response.error);
-		}
-		res.data = response.data;
+		
+		res.data = response;
 		next();
 	} catch (error) {
 		commonErrorHandler(req, res, error.message, 400, error);

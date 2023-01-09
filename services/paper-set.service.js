@@ -1,7 +1,7 @@
 const models = require('../models');
-// eslint-disable-next-line no-unused-vars
 const { sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { camelCaseToSnakeCase } = require('../helpers/common-function.helper');
 
 const createPaperSet = async (payload) => {
 	const subjectExist = await models.Subject.findOne({
@@ -11,10 +11,7 @@ const createPaperSet = async (payload) => {
 		throw new Error('subject not found');
 	}
 
-	const paperSetNameExist = await models.PaperSet.findOne({
-		where: { paper_set_name: payload.paperSetName },
-	});
-	if (paperSetNameExist) {
+	if (payload.paperSetName == paperSetNameExist.paper_set_name) {
 		throw new Error('paperSet name already exist');
 	}
 
@@ -82,9 +79,7 @@ const getAllPaperSetQuestions = async (payload, params) => {
 
 const updatePaperSet = async (payload, params) => {
 	const paperSetId = params.paperSetId;
-	const paperSetName = payload.paperSetName;
-	const positiveMarks = payload.marksPerQuestion;
-	const negativeMarks = payload.negativeMarksPerWrongAnswer;
+	payload = camelCaseToSnakeCase(payload);
 	const paperSetExist = await models.PaperSet.findOne({
 		where: { id: paperSetId },
 	});
@@ -92,75 +87,67 @@ const updatePaperSet = async (payload, params) => {
 		throw new Error('Paper Set not found');
 	}
 
-	const paperSetNameExist = await models.PaperSet.findOne({
-		where: { paper_set_name: paperSetName },
-	});
-
-	if (paperSetNameExist) {
+	if (paperSetExist.paper_set_name == payload.paper_set_name) {
 		throw new Error('Paper Set name already exist');
 	}
 
-	const paperSetPayload = {
-		paper_set_name: payload.paperSetName,
-		marks_per_question: positiveMarks,
-		negative_marks_per_question: negativeMarks,
-	};
-	await models.PaperSet.update(paperSetPayload, {
+	await models.PaperSet.update(payload, {
 		where: { id: paperSetExist.dataValues.id },
 	});
 
-	const paperSetUpdated = await models.PaperSet.findOne({
-		where: { id: paperSetId },
-	});
-
-	return paperSetUpdated;
+	return {
+		id: paperSetId,
+		paper_set_name: paperSetName,
+		marks_per_question: positiveMarks,
+		negative_marks_per_wrong_answer: negativeMarks,
+	};
 };
 
-const addQuestionToPaperSet = async (payload, params) => {
+const addQuestionToPaperSet = async (params) => {
 	const trans = await sequelize.transaction();
-	try {
-		const paperSetId = params.paperSetId;
-		const questionId = params.questionId;
+	const paperSetId = params.paperSetId;
+	const questionId = params.questionId;
 
-		const paperSetExist = await models.PaperSet.findOne(
+	const paperSetExist = await models.PaperSet.findOne(
+		{
+			where: { id: paperSetId },
+		},
+		{ transaction: trans }
+	);
+
+	if (!paperSetExist) {
+		throw new Error('Paper Set not fouund');
+	}
+
+	const questionAnswerExist = await models.QuestionAnswer.findOne(
+		{
+			where: { id: questionId },
+		},
+		{ transaction: trans }
+	);
+
+	if (!questionAnswerExist) {
+		throw new Error('Question Answer not found');
+	}
+
+	const questionInPaperSet =
+		await models.PaperSetQuestionAnswerMapping.findOne(
 			{
-				where: { id: paperSetId },
-			},
-			{ transaction: trans }
-		);
-
-		if (!paperSetExist) {
-			throw new Error('Paper Set not fouund');
-		}
-
-		const questionAnswerExist = await models.QuestionAnswer.findOne(
-			{
-				where: { id: questionId },
-			},
-			{ transaction: trans }
-		);
-
-		if (!questionAnswerExist) {
-			throw new Error('Question Answer not found');
-		}
-
-		const questionInPaperSet =
-			await models.PaperSetQuestionAnswerMapping.findOne(
-				{
-					where: {
-						[Op.and]: [
-							{ paper_set_id: paperSetId },
-							{ question_answer_id: questionId },
-						],
-					},
+				where: {
+					[Op.and]: [
+						{ paper_set_id: paperSetId },
+						{ question_answer_id: questionId },
+					],
 				},
-				{ transaction: trans }
-			);
+			},
+			{ transaction: trans }
+		);
 
-		if (questionInPaperSet) {
-			throw new Error('question already in paper set');
-		}
+	if (questionInPaperSet) {
+		throw new Error('question already in paper set');
+	}
 
+	try {
 		const questionAddedToPaperSet =
 			await models.PaperSetQuestionAnswerMapping.create(
 				{
@@ -180,10 +167,10 @@ const addQuestionToPaperSet = async (payload, params) => {
 
 		await trans.commit();
 
-		return { data: questionAddedToPaperSet, error: null };
+		return questionAddedToPaperSet;
 	} catch (error) {
 		trans.rollback();
-		return { data: null, error: error.message };
+		throw new Error(error.message);
 	}
 };
 

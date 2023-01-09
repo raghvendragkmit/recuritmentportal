@@ -17,6 +17,17 @@ const createQuestionAnswer = async (payload) => {
 	const option3 = payload.option3;
 	const option4 = payload.option4;
 	const correctOption = payload.correctOption;
+	const subjectId = payload.subjectId;
+
+	const subjectExist = await models.Subject.findOne({
+		where: {
+			id: subjectId,
+		},
+	});
+
+	if (!subjectExist) {
+		throw new Error('subject not found');
+	}
 
 	const questionCreated = await models.QuestionAnswer.create({
 		question: payload.question,
@@ -25,12 +36,8 @@ const createQuestionAnswer = async (payload) => {
 		option3: option3,
 		option4: option4,
 		correct_option: correctOption,
+		subject_id: subjectId,
 	});
-
-	if (!questionCreated) {
-		throw new Error('question not created');
-	}
-
 	return 'Question answer created successfully';
 };
 
@@ -39,7 +46,6 @@ const createQuestionAnswers = async (payload) => {
 	const trans = await sequelize.transaction();
 	try {
 		for (let key in questionObject) {
-			// eslint-disable-next-line no-prototype-builtins
 			const item = questionObject[key];
 			const questionExist = await models.QuestionAnswer.findOne(
 				{
@@ -48,33 +54,34 @@ const createQuestionAnswers = async (payload) => {
 				{ transaction: trans }
 			);
 
-			if (questionExist) {
-				throw new Error('Question already exist');
-			}
-
-			const option1 = item.option1;
-			const option2 = item.option2;
-			const option3 = item.option3;
-			const option4 = item.option4;
-			const correctOption = item.correctOption;
-
-			const questionCreated = await models.QuestionAnswer.create(
-				{
-					question: item.question,
-					option1: option1,
-					option2: option2,
-					option3: option3,
-					option4: option4,
-					correct_option: correctOption,
+			const subjectExist = await models.Subject.findOne({
+				where: {
+					id: subjectId,
 				},
-				{ transaction: trans }
-			);
+			});
 
-			if (!questionCreated) {
-				throw new Error('question not created');
+			if (!questionExist && subjectExist) {
+				const option1 = item.option1;
+				const option2 = item.option2;
+				const option3 = item.option3;
+				const option4 = item.option4;
+				const correctOption = item.correctOption;
+				const subjectId = item.subjectId;
+
+				const questionCreated = await models.QuestionAnswer.create(
+					{
+						question: item.question,
+						option1: option1,
+						option2: option2,
+						option3: option3,
+						option4: option4,
+						correct_option: correctOption,
+						subject_id: subjectId,
+					},
+					{ transaction: trans }
+				);
 			}
 		}
-
 		await trans.commit();
 		return { data: 'Question Answer Created Successfully', error: null };
 	} catch (error) {
@@ -111,15 +118,23 @@ const updateQuestionAnswer = async (payload, params) => {
 		throw new Error('question not found');
 	}
 
-	const questionPayload = {};
+	const questionPayload = { ...payload };
 
-	for (let key in payload) {
-		payload[key] && (questionPayload[key] = payload[key]);
+	if (questionPayload.correctOption) {
+		questionPayload.correct_option = questionPayload.correctOption;
+		delete questionPayload.correctOption;
 	}
 
-  if (questionPayload.correctOption) {
-    questionPayload.correct_option = questionPayload.correctOption;
-		delete questionPayload.correctOption;
+	if (questionPayload.subjectId) {
+		const subjectExist = await models.Subject.findOne({
+			where: {
+				id: questionPayload.subjectId,
+			},
+		});
+
+		if (!subjectExist) {
+			throw new Error('Subject not found');
+		}
 	}
 
 	await models.QuestionAnswer.update(questionPayload, {

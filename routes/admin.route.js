@@ -84,7 +84,7 @@ router.post(
 	'/exam',
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
-	examValidator.createExamSchema,
+	// examValidator.createExamSchema,
 	examController.createExam,
 	genericResponse.sendResponse
 );

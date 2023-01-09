@@ -1,3 +1,5 @@
+const _ = require('lodash');
+
 const commonErrorHandler = async (
 	req,
 	res,
@@ -50,8 +52,21 @@ const sendResponse = async (req, res) => {
 	return res.status(200).json(response);
 };
 
+const camelCaseToSnakeCase = (obj) => {
+	if (typeof obj === 'string') obj = JSON.parse(obj);
+	const newObj = {};
+	for (let prop in obj) {
+		newObj[_.snakeCase(prop)] =
+			typeof obj[prop] === 'object'
+				? camelCaseToSnakeCase(obj[prop])
+				: obj[prop];
+	}
+	return newObj;
+};
+
 module.exports = {
 	commonErrorHandler,
 	generateRandom,
 	sendResponse,
+	camelCaseToSnakeCase,
 };
