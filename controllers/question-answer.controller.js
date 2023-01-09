@@ -89,7 +89,8 @@ const deleteQuestionAnswer = async (req, res, next) => {
 
 const questionAnswerByFile = async (req, res, next) => {
 	try {
-		const { body: payload } = req;
+		const { body: payload, file } = req;
+		console.log(file);
 		const response = await questionAnswerServices.questionAnswerByFile(
 			payload
 		);

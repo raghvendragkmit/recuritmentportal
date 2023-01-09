@@ -475,7 +475,13 @@ const submitExam = async (payload, user) => {
 				continue;
 			}
 
-			const correctAnswer = questionExist.correct_option;
+			const correctAnswer = questionExist.questionAnswer.correct_option;
+			console.log(questionExist);
+			console.log(
+				correctAnswer == correctOption,
+				correctAnswer,
+				correctOption
+			);
 			if (correctAnswer == correctOption) {
 				correctAnswers++;
 			}

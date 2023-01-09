@@ -72,9 +72,22 @@ const paperSetNameId = async (req, res, next) => {
 	next();
 };
 
+const paperSetQuestionAnswerSchema = async (req, res, next) => {
+	const data = res.data || null;
+
+	const response = {
+		questionAnswerId: data.question_answer_id,
+		paperSetId: data.paper_set_id,
+	};
+
+	res.data = response;
+	next();
+};
+
 module.exports = {
 	createPaperSet,
 	getALlPaperSet,
 	questionAnswers,
 	paperSetNameId,
+	paperSetQuestionAnswerSchema,
 };

@@ -1,6 +1,8 @@
 const models = require('../models');
 const { Op } = require('sequelize');
 const { throttle } = require('lodash');
+const { sequelize } = require('../models');
+const { ErrorReply } = require('redis');
 const createGroup = async (payload) => {
 	const groupExist = await models.Group.findOne({
 		where: { group_name: payload.groupName },
@@ -177,6 +179,74 @@ const getAllUserFromGroup = async (payload, params) => {
 	return usersInGroup;
 };
 
+const addUsersToGroup = async (payload, params) => {
+	const trans = await sequelize.transaction();
+	try {
+		const groupId = params.groupId;
+		const users = payload.users;
+
+		const groupExist = await models.Group.findOne(
+			{
+				where: {
+					id: groupId,
+				},
+			},
+			{ transaction: trans }
+		);
+
+		if (!groupExist) {
+			throw new Error('Group not found');
+		}
+
+		for (let key in users) {
+			const userId = users[key].userId;
+
+			const userExist = await models.User.findOne(
+				{
+					where: {
+						id: userId,
+					},
+				},
+				{ transaction: trans }
+			);
+
+			if (!userExist) {
+				throw new Error('user not found');
+			}
+
+			const userInGroup = await models.GroupUserMapping.findOne(
+				{
+					where: {
+						[Op.and]: [{ user_id: userId }, { group_id: groupId }],
+					},
+				},
+				{ transaction: trans }
+			);
+
+			if (userInGroup) {
+				throw new Error('User already in group');
+			}
+
+			const userAddedToGroup = await models.GroupUserMapping.create(
+				{
+					user_id: userId,
+					group_id: groupId,
+				},
+				{ transaction: trans }
+			);
+
+			if (!userAddedToGroup) {
+				throw new Error('error in adding user to group');
+			}
+		}
+		await trans.commit();
+		return { data: 'Users added to group', error: null };
+	} catch (error) {
+		await trans.rollback();
+		return { data: null, error: error.message };
+	}
+};
+
 module.exports = {
 	createGroup,
 	deleteGroup,
@@ -185,4 +255,5 @@ module.exports = {
 	addUserToGroup,
 	deleteUserFromGroup,
 	getAllUserFromGroup,
+	addUsersToGroup,
 };

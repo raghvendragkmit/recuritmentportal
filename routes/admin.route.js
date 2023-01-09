@@ -202,6 +202,7 @@ router.post(
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
 	paperSetController.addQuestionToPaperSet,
+	paperSetSerializer.paperSetQuestionAnswerSchema,
 	genericResponse.sendResponse
 );
 
@@ -210,6 +211,16 @@ router.delete(
 	authMiddleware.checkAccessToken,
 	authMiddleware.verifyAdmin,
 	paperSetController.deleteQuestionFromPaperSet,
+	genericResponse.sendResponse
+);
+
+router.post(
+	'/paper-set/:paperSetId/question-answers',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	paperSetValidator.paperSetIdSchema,
+	paperSetValidator.questionAnswersPaperSetSchema,
+	paperSetController.addQuestionsToPaperSet,
 	genericResponse.sendResponse
 );
 
@@ -379,6 +390,15 @@ router.patch(
 	groupValidator.groupNameSchema,
 	groupController.updateGroup,
 	groupSerializer.groupNameId,
+	genericResponse.sendResponse
+);
+
+router.post(
+	'/group/:groupId/users',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	groupValidator.groupUsersIdSchema,
+	groupController.addUsersToGroup,
 	genericResponse.sendResponse
 );
 

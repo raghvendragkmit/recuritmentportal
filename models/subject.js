@@ -19,6 +19,12 @@ module.exports = (sequelize, DataTypes) => {
 				sourceKey: 'id',
 				as: 'paperSets',
 			});
+
+			Subject.hasMany(models.QuestionAnswer, {
+				foreignKey: 'subject_id',
+				sourceKey: 'id',
+				as: 'questionAnswers',
+			});
 		}
 	}
 	Subject.init(

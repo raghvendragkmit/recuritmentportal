@@ -113,7 +113,6 @@ const updatePaperSet = async (payload, params) => {
 		where: { id: paperSetId },
 	});
 
-	console.log(paperSetUpdated, '------------>');
 	return paperSetUpdated;
 };
 
@@ -262,6 +261,93 @@ const deleteQuestionFromPaperSet = async (payload, params) => {
 	}
 };
 
+const addQuestionsToPaperSet = async (payload, params) => {
+	const trans = await sequelize.transaction();
+	try {
+		const paperSetId = params.paperSetId;
+		const questionAnswers = payload.questionAnswers;
+
+		const paperSetExist = await models.PaperSet.findOne(
+			{
+				where: {
+					id: paperSetId,
+				},
+			},
+			{ transaction: trans }
+		);
+
+		if (!paperSetExist) {
+			throw new Error('paper set not found');
+		}
+
+		for (let key in questionAnswers) {
+			const questionAnswerId = questionAnswers[key].questionId;
+
+			const questionAnswerExist = await models.QuestionAnswer.findOne(
+				{
+					where: {
+						id: questionAnswerId,
+					},
+				},
+				{ transaction: trans }
+			);
+
+			if (!questionAnswerExist) {
+				throw new Error('question  not found');
+			}
+
+			const questionInPaperSet =
+				await models.PaperSetQuestionAnswerMapping.findOne(
+					{
+						where: {
+							[Op.and]: [
+								{ paper_set_id: paperSetId },
+								{ question_answer_id: questionAnswerId },
+							],
+						},
+					},
+					{ transaction: trans }
+				);
+
+			if (questionInPaperSet) {
+				throw new Error('Question already in paper set');
+			}
+
+			const questionAddedToPaper =
+				await models.PaperSetQuestionAnswerMapping.create(
+					{
+						paper_set_id: paperSetId,
+						question_answer_id: questionAnswerId,
+					},
+					{ transaction: trans }
+				);
+
+			if (!questionAddedToPaper) {
+				throw new Error('error in adding question to paper set');
+			}
+		}
+
+		await models.PaperSet.update(
+			{
+				total_questions:
+					paperSetExist.total_questions +
+					payload.questionAnswers.length,
+			},
+			{
+				where: {
+					id: paperSetId,
+				},
+			},
+			{ transaction: trans }
+		);
+		await trans.commit();
+		return { data: 'Questions added to paper set', error: null };
+	} catch (error) {
+		await trans.rollback();
+		return { data: null, error: error.message };
+	}
+};
+
 module.exports = {
 	createPaperSet,
 	getAllPaperSet,
@@ -270,4 +356,5 @@ module.exports = {
 	updatePaperSet,
 	addQuestionToPaperSet,
 	deleteQuestionFromPaperSet,
+	addQuestionsToPaperSet,
 };

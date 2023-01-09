@@ -84,6 +84,21 @@ const getAllUserFromGroup = async (req, res, next) => {
 	}
 };
 
+const addUsersToGroup = async (req, res, next) => {
+	try {
+		const { body: payload, params } = req;
+		const response = await groupServices.addUsersToGroup(payload, params);
+
+		if (response.error) {
+			throw new Error(response.error);
+		}
+		res.data = response.data;
+		next();
+	} catch (error) {
+		commonErrorHandler(req, res, error.message, 400, error);
+	}
+};
+
 module.exports = {
 	createGroup,
 	deleteGroup,
@@ -92,4 +107,5 @@ module.exports = {
 	addUserToGroup,
 	deleteUserFromGroup,
 	getAllUserFromGroup,
+	addUsersToGroup,
 };

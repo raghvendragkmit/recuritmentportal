@@ -14,6 +14,12 @@ module.exports = (sequelize, DataTypes) => {
 				foreignKey: 'question_answer_id',
 				sourceKey: 'id',
 			});
+
+			QuestionAnswer.belongsTo(models.Subject, {
+				foreignKey: 'subject_id',
+				sourceKey: 'id',
+				as: 'subjects',
+			});
 		}
 	}
 	QuestionAnswer.init(
@@ -41,6 +47,14 @@ module.exports = (sequelize, DataTypes) => {
 			correct_option: {
 				type: Sequelize.STRING,
 				allowNull: false,
+			},
+			subject_id: {
+				type: Sequelize.UUID,
+				allowNull: false,
+				references: {
+					model: 'subject',
+					key: 'id',
+				},
 			},
 		},
 		{

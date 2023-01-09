@@ -33,6 +33,14 @@ module.exports = {
 				type: Sequelize.STRING,
 				allowNull: false,
 			},
+			subject_id: {
+				type: Sequelize.UUID,
+				allowNull: false,
+				references: {
+					model: 'subject',
+					key: 'id',
+				},
+			},
 			created_at: {
 				allowNull: false,
 				type: Sequelize.DATE,
