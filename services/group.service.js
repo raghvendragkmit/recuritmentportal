@@ -1,8 +1,8 @@
 const models = require('../models');
 const { Op } = require('sequelize');
-const { throttle } = require('lodash');
 const { sequelize } = require('../models');
-const { ErrorReply } = require('redis');
+
+
 const createGroup = async (payload) => {
 	const groupExist = await models.Group.findOne({
 		where: { group_name: payload.groupName },

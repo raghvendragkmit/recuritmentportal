@@ -1,3 +1,4 @@
+const reader = require('xlsx');
 const readXlsxFile = require('read-excel-file/node');
 const fs = require('fs');
 const { generateRandom } = require('../helpers/common-function.helper');
@@ -5,6 +6,9 @@ const { generateRandom } = require('../helpers/common-function.helper');
 const convertUserExcelToJson = async (req, res, next) => {
 	const userObjArray = [];
 	const path = 'uploads/' + req.file.originalname;
+	const file = reader.readFile(path);
+	req.groupName = file.SheetNames[0];
+	console.log(req.groupName);
 	await readXlsxFile(fs.createReadStream(path)).then((rows) => {
 		rows.shift();
 		rows.forEach((row) => {

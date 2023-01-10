@@ -1,12 +1,66 @@
 const { Router } = require('express');
 const userController = require('../controllers/user.controller');
-const examController = require('../controllers/exam.controller');
 const genericResponse = require('../helpers/common-function.helper');
 const authMiddleware = require('../middlewares/auth');
 const userValidator = require('../validators/user.validator');
-const examValidator = require('../validators/exam.validator');
-const examSerializer = require('../serializers/exam.serializer');
+const userSerializer = require('../serializers/user.serializer');
+const { fileUpload } = require('../helpers/file-upload.helper');
+const fileUploadValidator = require('../validators/file-upload.validator');
+const fileMiddleware = require('../middlewares/convert-excel-to-json');
 const router = Router();
+
+
+router.post(
+	'/',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	userValidator.createUserSchema,
+	userController.createUser,
+	userSerializer.createUser,
+	genericResponse.sendResponse
+);
+
+router.delete(
+	'/:userId',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	userValidator.userIdSchema,
+	userController.deleteUser,
+	genericResponse.sendResponse
+);
+
+router.get(
+	'/users',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	userValidator.limitPageSchema,
+	userController.getAllUser,
+	userSerializer.getAllUser,
+	genericResponse.sendResponse
+);
+
+router.post(
+	'/reset-user-password',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	userValidator.adminResetUserPasswordSchema,
+	userController.adminResetPassword,
+	genericResponse.sendResponse
+);
+
+router.post(
+	'/file',
+	authMiddleware.checkAccessToken,
+	authMiddleware.verifyAdmin,
+	fileUpload.single('myfile'),
+	fileUploadValidator.fileSchema,
+	fileMiddleware.convertUserExcelToJson,
+	userValidator.createUsersSchema,
+	userController.userByFile,
+	genericResponse.sendResponse
+);
+
+
 
 router.post(
 	'/login',
@@ -45,57 +99,12 @@ router.post(
 	genericResponse.sendResponse
 );
 
-router.get(
-	'/upcoming-exams',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyUser,
-	examController.getAllUpcomingExam,
-	examSerializer.upcomingExam,
-	genericResponse.sendResponse
-);
-
-router.post(
-	'/start-exam/:examId',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyUser,
-	examValidator.examIdSchema,
-	examController.startExam,
-	examSerializer.examQuestionAnswer,
-	genericResponse.sendResponse
-);
-
-router.post(
-	'/submit-exam',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyUser,
-	examValidator.submitExam,
-	examController.submitExam,
-	genericResponse.sendResponse
-);
-
-router.get(
-	'/exam-result/:examId',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyUser,
-	examValidator.examIdSchema,
-	examController.checkResult,
-	examSerializer.userResult,
-	genericResponse.sendResponse
-);
-
-router.post(
-	'/log-exam-response',
-	authMiddleware.checkAccessToken,
-	authMiddleware.verifyUser,
-	examController.logResponse,
-	genericResponse.sendResponse
-);
-
 router.post(
 	'/logout',
 	authMiddleware.checkAccessToken,
 	userController.logOutUser,
 	genericResponse.sendResponse
 );
+
 
 module.exports = router;

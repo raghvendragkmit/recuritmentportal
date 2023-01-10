@@ -6,15 +6,16 @@ module.exports = {
 		const schema = Joi.object({
 			subjectName: Joi.string().min(1).required(),
 			examStartTime: Joi.string()
-				.regex(/^([0-9]{2}:)([0-9]{2}:)([0-9]{2})$/)
+				.regex(
+					/^([0-9]{4}-)([0-9]{2}-)([0-9]{2})(T)([0-9]{2}:)([0-9]{2}:)([0-9]{2})$/
+				)
 				.required(),
 			examEndTime: Joi.string()
-				.regex(/^([0-9]{2}:)([0-9]{2}:)([0-9]{2})$/)
+				.regex(
+					/^([0-9]{4}-)([0-9]{2}-)([0-9]{2})(T)([0-9]{2}:)([0-9]{2}:)([0-9]{2})$/
+				)
 				.required(),
-			examDate: Joi.string()
-				.regex(/^([0-9]{4}-)([0-9]{2}-)([0-9]{2})$/)
-				.required(),
-			examPassingPercentage: Joi.number().min(33).precision(2),
+			examPassingPercentage: Joi.number().min(33).precision(2).required(),
 		});
 		validateRequest(req, res, next, schema, 'body');
 	},
@@ -43,6 +44,18 @@ module.exports = {
 			examId: Joi.string().guid().required(),
 			questionId: Joi.string().guid().required(),
 			answerId: Joi.string().guid().required(),
+		});
+		validateRequest(req, res, next, schema, 'body');
+	},
+	examUpdateSchema: async (req, res, next) => {
+		const schema = Joi.object({
+			examStartTime: Joi.string().regex(
+				/^([0-9]{4}-)([0-9]{2}-)([0-9]{2})(T)([0-9]{2}:)([0-9]{2}:)([0-9]{2})$/
+			),
+			examEndTime: Joi.string().regex(
+				/^([0-9]{4}-)([0-9]{2}-)([0-9]{2})(T)([0-9]{2}:)([0-9]{2}:)([0-9]{2})$/
+			),
+			examPassingPercentage: Joi.number().min(33).precision(2),
 		});
 		validateRequest(req, res, next, schema, 'body');
 	},

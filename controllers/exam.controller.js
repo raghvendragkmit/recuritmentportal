@@ -28,7 +28,6 @@ const deleteExam = async (req, res, next) => {
 
 const getAllExam = async (req, res, next) => {
 	try {
-		// eslint-disable-next-line no-unused-vars
 		const { body: payload, query } = req;
 		const response = await examServices.getAllExam(query);
 		res.data = response;

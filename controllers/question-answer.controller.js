@@ -36,7 +36,7 @@ const createQuestionAnswers = async (req, res, next) => {
 		const response = await questionAnswerServices.createQuestionAnswers(
 			payload
 		);
-		
+
 		res.data = response;
 		next();
 	} catch (error) {
@@ -99,6 +99,20 @@ const questionAnswerByFile = async (req, res, next) => {
 	}
 };
 
+const questionAnswerBySubject = async (req, res, next) => {
+	try {
+		const { body: payload, file } = req;
+		console.log(file);
+		const response = await questionAnswerServices.questionAnswerBySubject(
+			payload
+		);
+		res.data = response;
+		next();
+	} catch (error) {
+		commonErrorHandler(req, res, error.message, 400, error);
+	}
+};
+
 module.exports = {
 	createQuestionAnswer,
 	getAllQuestionAnswer,
@@ -107,4 +121,5 @@ module.exports = {
 	deleteQuestionAnswer,
 	updateQuestionAnswer,
 	questionAnswerByFile,
+	questionAnswerBySubject,
 };

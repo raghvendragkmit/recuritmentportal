@@ -11,8 +11,16 @@ const createPaperSet = async (payload) => {
 		throw new Error('subject not found');
 	}
 
-	if (payload.paperSetName == paperSetNameExist.paper_set_name) {
-		throw new Error('paperSet name already exist');
+	const paperSetNameExist = await models.PaperSet.findOne({
+		where: {
+			paper_set_name: payload.paperSetName,
+		},
+	});
+
+	if (paperSetNameExist) {
+		throw new Error(
+			`paperSet ${paperSetNameExist.paper_set_name} already exist`
+		);
 	}
 
 	const paperSetPayload = {
@@ -27,12 +35,13 @@ const createPaperSet = async (payload) => {
 
 const deletePaperSet = async (payload, params) => {
 	const paperSetId = params.paperSetId;
+	console.log(paperSetId);
 	const questionsInPaperSet =
-		await models.PaperSetQuestionAnswerMapping.count({
+		await models.PaperSetQuestionAnswerMapping.findAll({
 			where: { paper_set_id: paperSetId },
 		});
 
-	if (questionsInPaperSet > 0) {
+	if (questionsInPaperSet.length > 0) {
 		throw new Error('cannot delete paperSet having questions');
 	}
 	await models.PaperSet.destroy({ where: { id: paperSetId } });
@@ -105,49 +114,69 @@ const updatePaperSet = async (payload, params) => {
 
 const addQuestionToPaperSet = async (params) => {
 	const trans = await sequelize.transaction();
-	const paperSetId = params.paperSetId;
-	const questionId = params.questionId;
+	try {
+		const paperSetId = params.paperSetId;
+		const questionId = params.questionId;
 
-	const paperSetExist = await models.PaperSet.findOne(
-		{
-			where: { id: paperSetId },
-		},
-		{ transaction: trans }
-	);
+		console.log(paperSetId, questionId);
 
-	if (!paperSetExist) {
-		throw new Error('Paper Set not fouund');
-	}
-
-	const questionAnswerExist = await models.QuestionAnswer.findOne(
-		{
-			where: { id: questionId },
-		},
-		{ transaction: trans }
-	);
-
-	if (!questionAnswerExist) {
-		throw new Error('Question Answer not found');
-	}
-
-	const questionInPaperSet =
-		await models.PaperSetQuestionAnswerMapping.findOne(
+		const paperSetExist = await models.PaperSet.findOne(
 			{
-				where: {
-					[Op.and]: [
-						{ paper_set_id: paperSetId },
-						{ question_answer_id: questionId },
-					],
-				},
+				where: { id: paperSetId },
+				include: [
+					{
+						model: models.Subject,
+						as: 'subjects',
+					},
+				],
 			},
 			{ transaction: trans }
 		);
 
-	if (questionInPaperSet) {
-		throw new Error('question already in paper set');
-	}
+		if (!paperSetExist) {
+			throw new Error('Paper Set not fouund');
+		}
 
-	try {
+		const questionAnswerExist = await models.QuestionAnswer.findOne(
+			{
+				where: { id: questionId },
+				include: [
+					{
+						model: models.Subject,
+						as: 'subjects',
+					},
+				],
+			},
+			{ transaction: trans }
+		);
+
+		if (!questionAnswerExist) {
+			throw new Error('Question Answer not found');
+		}
+
+		const questionInPaperSet =
+			await models.PaperSetQuestionAnswerMapping.findOne(
+				{
+					where: {
+						[Op.and]: [
+							{ paper_set_id: paperSetId },
+							{ question_answer_id: questionId },
+						],
+					},
+				},
+				{ transaction: trans }
+			);
+
+		if (questionInPaperSet) {
+			throw new Error('question already in paper set');
+		}
+
+		if (paperSetExist.subject_id != questionAnswerExist.subject_id) {
+			throw new Error(
+				`cannot add ${questionAnswerExist.subjects.subject_name} question to ${paperSetExist.subjects.subject_name} paperSet`
+			);
+		}
+
 		const questionAddedToPaperSet =
 			await models.PaperSetQuestionAnswerMapping.create(
 				{
@@ -259,12 +288,18 @@ const addQuestionsToPaperSet = async (payload, params) => {
 				where: {
 					id: paperSetId,
 				},
+				include: [
+					{
+						model: models.Subject,
+						as: 'subjects',
+					},
+				],
 			},
 			{ transaction: trans }
 		);
 
 		if (!paperSetExist) {
-			throw new Error('paper set not found');
+			throw new Error(`paper set ${paperSetId} not found`);
 		}
 
 		for (let key in questionAnswers) {
@@ -275,12 +310,18 @@ const addQuestionsToPaperSet = async (payload, params) => {
 					where: {
 						id: questionAnswerId,
 					},
+					include: [
+						{
+							model: models.Subject,
+							as: 'subjects',
+						},
+					],
 				},
 				{ transaction: trans }
 			);
 
 			if (!questionAnswerExist) {
-				throw new Error('question  not found');
+				throw new Error(`question ${questionAnswerId}  not found`);
 			}
 
 			const questionInPaperSet =
@@ -297,7 +338,20 @@ const addQuestionsToPaperSet = async (payload, params) => {
 				);
 
 			if (questionInPaperSet) {
-				throw new Error('Question already in paper set');
+				throw new Error(
+					`Question ${questionAnswerId} already in paper set`
+				);
+			}
+
+			console.log(
+				paperSetExist.subject_id,
+				questionAnswerExist.subject_id
+			);
+
+			if (paperSetExist.subject_id != questionAnswerExist.subject_id) {
+				throw new Error(
+					`cannot add ${questionAnswerExist.subjects.subject_name} ${questionAnswerId} question to ${paperSetExist.subjects.subject_name} paper set`
+				);
 			}
 
 			const questionAddedToPaper =

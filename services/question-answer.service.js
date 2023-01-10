@@ -56,9 +56,11 @@ const createQuestionAnswers = async (payload) => {
 
 			const subjectExist = await models.Subject.findOne({
 				where: {
-					id: subjectId,
+					id: item.subjectId,
 				},
 			});
+
+			console.log(item);
 
 			if (!questionExist && subjectExist) {
 				const option1 = item.option1;
@@ -83,16 +85,22 @@ const createQuestionAnswers = async (payload) => {
 			}
 		}
 		await trans.commit();
-		return { data: 'Question Answer Created Successfully', error: null };
+		return 'Question Answer Created Successfully';
 	} catch (error) {
 		await trans.rollback();
-		return { data: null, error: error.message };
+		throw new Error(error.message);
 	}
 };
 
 const getAllQuestionAnswer = async (query) => {
-	const questionAnswers = await models.QuestionAnswer.findAll();
-	console.log(questionAnswers);
+	const questionAnswers = await models.QuestionAnswer.findAll({
+		include: [
+			{
+				model: models.Subject,
+				as: 'subjects',
+			},
+		],
+	});
 	return questionAnswers;
 };
 
@@ -178,6 +186,18 @@ const questionAnswerByFile = async (payload, file) => {
 	return 'Question Answers uploaded successfully';
 };
 
+const questionAnswerBySubject = async (params) => {
+	const subjectId = params.subjectId;
+	const questionAnswer = await models.QuestionAnswer.findAll({
+		subject_id: subjectId,
+	});
+
+	if (!questionAnswer) {
+		throw new Error('No question answer found');
+	}
+	return questionAnswer;
+};
+
 module.exports = {
 	createQuestionAnswer,
 	getAllQuestionAnswer,
@@ -186,4 +206,5 @@ module.exports = {
 	updateQuestionAnswer,
 	deleteQuestionAnswer,
 	questionAnswerByFile,
+	questionAnswerBySubject,
 };

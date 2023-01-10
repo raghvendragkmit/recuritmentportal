@@ -21,7 +21,7 @@ module.exports = {
 		});
 		validateRequest(req, res, next, schema, 'params');
 	},
-	groupUsersIdSchema: async (req, res, next) => {
+	groupUsersSchema: async (req, res, next) => {
 		const users = Joi.object().keys({
 			userId: Joi.string().guid().required(),
 		});

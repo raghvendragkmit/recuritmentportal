@@ -26,6 +26,8 @@ const checkAccessToken = async (req, res, next) => {
 		}
 		req.user = user;
 
+		console.log('bwbihcwvciv');
+
 		next();
 	} catch (error) {
 		if (error.message == 'Access denied') {

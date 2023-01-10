@@ -3,6 +3,7 @@ const moment = require('moment');
 const { sequelize } = require('../models');
 const { Op } = require('sequelize');
 const models = require('../models');
+
 const createExam = async (payload) => {
 	const subjectExist = await models.Subject.findOne({
 		where: { subject_name: payload.subjectName },
@@ -29,7 +30,7 @@ const createExam = async (payload) => {
 	const endTime = Date.parse(payload.examEndTime);
 
 	if (startTime <= currentTime) {
-		throw new Error('exam start time must be greater than current time');
+		throw new Error('examStartTime must be greater than current time');
 	}
 
 	if (startTime >= endTime) {
@@ -50,7 +51,6 @@ const createExam = async (payload) => {
 		subjectId: examCreated.subject_id,
 		examStartTime: examCreated.exam_start_time,
 		examEndTime: examCreated.exam_end_time,
-		examDate: examCreated.exam_date,
 	};
 };
 
@@ -93,13 +93,18 @@ const deleteExam = async (payload, params) => {
 	}
 };
 
-// eslint-disable-next-line no-unused-vars
 const getAllExam = async (query) => {
-	const exams = await models.Exam.findAll();
+	const exams = await models.Exam.findAll({
+		include: [
+			{
+				model: models.Subject,
+				as: 'subjects',
+			},
+		],
+	});
 	return exams;
 };
 
-// eslint-disable-next-line no-unused-vars
 const getAllUpcomingExam = async (payload, user) => {
 	const userId = user.id;
 
@@ -118,8 +123,6 @@ const getAllUpcomingExam = async (payload, user) => {
 		groupIdArray.push(group.group_id);
 	});
 
-	console.log(groupIdArray);
-
 	const allGroupExams = await models.ExamGroupMapping.findAll({
 		where: {
 			group_id: { [Op.in]: [...groupIdArray] },
@@ -136,8 +139,6 @@ const getAllUpcomingExam = async (payload, user) => {
 	allGroupExams.forEach((exam) => {
 		allExamId.push(exam.exam_id);
 	});
-
-	console.log(allExamId);
 
 	const allUpcomingExams = await models.Exam.findAll({
 		where: {
@@ -324,9 +325,10 @@ const submitExam = async (user, params) => {
 			{ transaction: trans }
 		);
 
-		const marksPerQuestion = paperSetExist.marks_per_question;
+		const marksPerQuestion =
+			examUserMappingExist.paper_sets.marks_per_question;
 		const negativeMarksPerWrongAnswer =
-			paperSetExist.negative_marks_per_question;
+			examUserMappingExist.paper_sets.negative_marks_per_question;
 
 		let totalMarksObtained =
 			marksPerQuestion * correctAnswers -
@@ -335,7 +337,8 @@ const submitExam = async (user, params) => {
 		if (totalMarksObtained < 0) {
 			totalMarksObtained = 0;
 		}
-		const passingPercentage = examExist.exam_passing_percentage;
+		const passingPercentage =
+			examUserMappingExist.exams.exam_passing_percentage;
 		const totalQuestions = examUserMappingExist.total_questions;
 		const percentageObtained =
 			(totalMarksObtained / totalQuestions) * marksPerQuestion * 100;
@@ -373,6 +376,8 @@ const logResponse = async (payload, user) => {
 		const questionId = payload.questionId;
 		const answer = payload.answer;
 
+		console.log(userId);
+
 		const examUserMappingExist =
 			await models.ExamUserPaperSetMapping.findOne(
 				{
@@ -398,18 +403,18 @@ const logResponse = async (payload, user) => {
 			throw new Error('exam not started');
 		}
 
-		if (examUserMappingExist.Exam.submit_time != null) {
+		if (examUserMappingExist.submit_time != null) {
 			throw new Error('exam submitted');
 		}
 
 		if (
-			Date.parse(examUserMappingExist.Exam.submit_time) <
+			Date.parse(examUserMappingExist.exams.exam_end_time) <
 			Date.parse(new Date())
 		) {
 			throw new Error('Cannot submit after submit time');
 		}
 
-		const paperSetId = examUserMappingExist.PaperSet.id;
+		const paperSetId = examUserMappingExist.paper_sets.id;
 
 		const attempt_id = examUserMappingExist.dataValues.id;
 
@@ -432,11 +437,11 @@ const logResponse = async (payload, user) => {
 				{ transaction: trans }
 			);
 
-		if (questionExist.QuestionAnswer == null) {
+		if (questionExist.questionAnswer == null) {
 			throw new Error('Invalid input');
 		}
 
-		const correctAnswer = questionExist.QuestionAnswer.correct_option;
+		const correctAnswer = questionExist.questionAnswer.correct_option;
 
 		const alreadySubmitted = await models.ExamUserResponse.findOne(
 			{
@@ -508,6 +513,12 @@ const examResult = async (payload, params) => {
 		where: {
 			exam_id: examId,
 		},
+		include: [
+			{
+				model: models.User,
+				as: 'users',
+			},
+		],
 		attributes: { exclude: ['created_at', 'updated_at', 'deleted_at'] },
 	});
 
@@ -573,6 +584,12 @@ const checkResult = async (payload, user, params) => {
 				{ publish_result: true },
 			],
 		},
+		include: [
+			{
+				model: models.User,
+				as: 'users',
+			},
+		],
 	});
 
 	if (!isResultPublished) {

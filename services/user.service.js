@@ -6,6 +6,7 @@ const { sendMail } = require('../helpers/mailer.helper');
 const redisClient = require('../helpers/redis.helper');
 const { sequelize } = require('../models');
 const { generateRandom } = require('../helpers/common-function.helper');
+const groupUserMapping = require('../models/group-user-mapping');
 
 const createUser = async (payload) => {
 	const userExist = await models.User.findOne({
@@ -230,9 +231,27 @@ const logOutUser = async (payload, user) => {
 	return 'logout successfully';
 };
 
-const userByFile = async (payload) => {
+const userByFile = async (payload, groupName) => {
 	const trans = await sequelize.transaction();
 	try {
+		let groupExist = await models.Group.findOne(
+			{
+				where: {
+					group_name: groupName,
+				},
+			},
+			{ transaction: trans }
+		);
+
+		if (!groupExist) {
+			groupExist = await models.Group.create(
+				{
+					group_name: groupName,
+				},
+				{ transaction: trans }
+			);
+		}
+
 		const userEmailPassword = [];
 		for (let key of payload.users) {
 			const hashPassword = await bcrypt.hash(key.password, 10);
@@ -246,33 +265,40 @@ const userByFile = async (payload) => {
 				contact_number: key.contactNumber,
 			};
 
-			const userExist = await models.User.findOne({
+			let userExist = await models.User.findOne({
 				where: { email: key.email },
 			});
-			if (userExist) {
-				throw new Error('user already exist');
+			if (!userExist) {
+				userExist = await models.User.create(
+					userObject,
+					{
+						transaction: trans,
+					},
+					{ transaction: trans }
+				);
+				userEmailPassword.push({
+					email: key.email,
+					password: key.password,
+				});
 			}
 
-			const userCreated = await models.User.create(userObject, {
-				transaction: trans,
-			});
-			if (!userCreated) {
-				throw new Error('Cannot create user');
-			}
-			userEmailPassword.push({
-				email: key.email,
-				password: key.password,
-			});
+			const addUserToGroup = await models.GroupUserMapping.create(
+				{
+					user_id: userExist.id,
+					group_id: groupExist.id,
+				},
+				{ transaction: trans }
+			);
 		}
 		await trans.commit();
 		userEmailPassword.forEach((user) => {
 			const mailBody = `Login Credentails \nemail: ${user.email}\npassword: ${user.password}`;
 			sendMail(mailBody, 'User login credentials', user.email);
 		});
-		return { data: 'users created successfully', error: null };
+		return 'users created successfully';
 	} catch (error) {
 		await trans.rollback();
-		return { data: null, error: error.message };
+		throw new Error(error.message);
 	}
 };
 
